@@ -65,6 +65,78 @@ function handleSignoutClick(){
 
 
 // get channel from API
-function getChannel(channel){
-    console.log(channel)
+function getChannel(channel) {
+  gapi.client.youtube.channels
+    .list({
+      part: 'snippet,contentDetails,statistics',
+      forUsername: channel
+    })
+    .then(response => {
+      console.log(response);
+      const channel = response.result.items[0];
+
+      const output = `
+        <ul class="collection">
+          <li class="collection-item">Title: ${channel.snippet.title}</li>
+          <li class="collection-item">ID: ${channel.id}</li>
+          <li class="collection-item">Subscribers: ${numberWithCommas(
+            channel.statistics.subscriberCount
+          )}</li>
+          <li class="collection-item">Views: ${numberWithCommas(
+            channel.statistics.viewCount
+          )}</li>
+          <li class="collection-item">Videos: ${numberWithCommas(
+            channel.statistics.videoCount
+          )}</li>
+        </ul>
+        <p>${channel.snippet.description}</p>
+        <hr>
+        <a class="btn grey darken-2" target="_blank" href="https://youtube.com/${
+          channel.snippet.customUrl
+        }">Visit Channel</a>
+      `;
+      showChannelData(output);
+
+      const playlistId = channel.contentDetails.relatedPlaylists.uploads;
+      requestVideoPlaylist(playlistId);
+    })
+    .catch(err => alert('No Channel By That Name'));
+}
+
+// Add commas to number
+function numberWithCommas(x) {
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function requestVideoPlaylist(playlistId) {
+  const requestOptions = {
+    playlistId: playlistId,
+    part: 'snippet',
+    maxResults: 10
+  };
+  const request = gapi.client.youtube.playlistItems.list(requestOptions);
+
+  request.execute(response => {
+    console.log(response);
+    const playListItems = response.result.items;
+    if (playListItems) {
+      let output = '<br><h4 class="center-align">Latest Videos</h4>';
+
+      // Loop through videos and append output
+      playListItems.forEach(item => {
+        const videoId = item.snippet.resourceId.videoId;
+
+        output += `
+          <div class="col s3">
+          <iframe width="100%" height="auto" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          </div>
+        `;
+      });
+
+      // Output videos
+      videoContainer.innerHTML = output;
+    } else {
+      videoContainer.innerHTML = 'No Uploaded Videos';
+    }
+  });
 }
